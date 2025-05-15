@@ -1,0 +1,20 @@
+num_nodes: 2
+
+envs:
+  NCCL_DEBUG: INFO
+  NCCL_IB_DISABLE: 0
+  NCCL_SOCKET_IFNAME: eth0  # or your network interface
+
+run: |
+  MASTER_ADDR=$(echo "$SKYPILOT_NODE_IPS" | head -n1)
+  echo "Starting distributed training, head node: $MASTER_ADDR"
+
+  uv run torchrun \
+    --nnodes=$SKYPILOT_NUM_NODES \
+    --nproc_per_node=$SKYPILOT_NUM_GPUS_PER_NODE \
+    --rdzv_backend=c10d \
+    --rdzv_endpoint=$MASTER_ADDR:8008 \
+    --rdzv_id $SKYPILOT_TASK_ID \
+    ./train_mnist_torchdata.py \
+    --num-gpus $SKYPILOT_NUM_GPUS_PER_NODE \
+    --num-nodes $SKYPILOT_NUM_NODES
