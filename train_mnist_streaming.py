@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from tqdm import trange
 import streaming
 import torchvision
+import lightning as L
+import argparse
 
 
 # Simple CNN model for MNIST
-class MNISTModel(nn.Module):
+class MNISTModel(L.LightningModule):
     def __init__(self):
         super(MNISTModel, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
@@ -29,10 +30,20 @@ class MNISTModel(nn.Module):
         x = self.fc2(x)
         return x
 
+    def training_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self(images)
+        loss = F.cross_entropy(outputs, labels)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+
 
 class MNISTDataset(streaming.StreamingDataset):
     def __init__(self, local, batch_size):
-        super().__init__(local=local, batch_size=batch_size)
+        super().__init__(local=local, batch_size=batch_size, shuffle=False)
         self.transforms = torchvision.transforms.ToTensor()
 
     def __getitem__(self, idx):
@@ -42,43 +53,26 @@ class MNISTDataset(streaming.StreamingDataset):
         return self.transforms(x), y
 
 
-def main():
-    batch_size = 10000
+def parse_args():
+    parser = argparse.ArgumentParser(description="MNIST Training Script")
+    parser.add_argument(
+        "--num-nodes", type=int, default=1, help="Number of nodes to use"
+    )
+    return parser.parse_args()
 
+
+def main():
+    args = parse_args()
+
+    batch_size = 1000
     datasets_dir = "./data/streaming_mnist"
     dataset = MNISTDataset(local=datasets_dir, batch_size=batch_size)
-    loader = DataLoader(dataset, batch_size=batch_size, num_workers=4)
+    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4)
 
-    # Initialize the model, loss function, and optimizer
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = MNISTModel().to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    model = MNISTModel()
 
-    # Train the model
-    num_epochs = int(5e7)
-    print(f"Training on {device} for {num_epochs} epochs...")
-
-    for epoch in trange(num_epochs, desc="training"):
-        model.train()
-        for batch in loader:
-            # Get images and labels from the batch
-            images, labels = batch
-            images = images.to(device)
-            labels = labels.to(device)
-
-            # Zero the gradients
-            optimizer.zero_grad()
-
-            # Forward pass
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-
-            # Backward pass and optimize
-            loss.backward()
-            optimizer.step()
-
-    print("Training complete!")
+    trainer = L.Trainer(max_epochs=1000, num_nodes=args.num_nodes)
+    trainer.fit(model=model, train_dataloaders=dataloader)
 
 
 if __name__ == "__main__":

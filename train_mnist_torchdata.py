@@ -1,13 +1,15 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
+import torch.nn.functional as F
 import torchvision
 from torch.utils.data import DataLoader
-from tqdm import trange
+import lightning as L
+import argparse
+import os
 
 
 # Simple CNN model for MNIST
-class MNISTModel(nn.Module):
+class MNISTModel(L.LightningModule):
     def __init__(self):
         super(MNISTModel, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
@@ -28,9 +30,30 @@ class MNISTModel(nn.Module):
         x = self.fc2(x)
         return x
 
+    def training_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self(images)
+        loss = F.cross_entropy(outputs, labels)
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="MNIST Training Script")
+    parser.add_argument(
+        "--num-nodes", type=int, default=1, help="Number of nodes to use"
+    )
+    return parser.parse_args()
+
 
 def main():
+    args = parse_args()
+
     datasets_dir = "./data/torchdata_mnist"
+    os.makedirs(datasets_dir, exist_ok=True)
     dataset = torchvision.datasets.MNIST(
         datasets_dir,
         train=True,
@@ -38,31 +61,13 @@ def main():
         transform=torchvision.transforms.ToTensor(),
     )
 
-    batch_size = 10000
-    loader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=True)
+    batch_size = 1000
+    dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=4, shuffle=True)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = MNISTModel().to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    model = MNISTModel()
 
-    num_epochs = int(5e6)
-    print(f"Training on {device} for {num_epochs} epochs...")
-
-    for epoch in trange(num_epochs, desc="training"):
-        model.train()
-        for batch in loader:
-            images, labels = batch
-            images = images.to(device)
-            labels = labels.to(device)
-
-            optimizer.zero_grad()
-
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-
-            loss.backward()
-            optimizer.step()
+    trainer = L.Trainer(max_epochs=1000, num_nodes=args.num_nodes)
+    trainer.fit(model=model, train_dataloaders=dataloader)
 
 
 if __name__ == "__main__":
