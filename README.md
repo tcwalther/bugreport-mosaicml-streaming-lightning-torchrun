@@ -13,7 +13,16 @@ program is stuck in NCCL communication errors.
 
 This doesn't happen with other datasets.
 
-This repo reproduces the bug. It relies on torch and streaming. The issue also occurs on torch 2.7 which ships with a newer version of NCCL. To reproduce, start with single node training:
+This repo reproduces the bug. It compares a torch.data Dataset and a MosaicML streaming dataset, showing that the former works fine while the latter hangs. To simplify the multinode training code, we
+use Pytorch Lightning.
+
+## Setup
+
+Run `uv sync`, or if you don't use `uv`, install `lightning`, `mosaicml-streaming` and `torchvision` (the latter for the MNIST dataset we use as an example).
+
+## Single node
+
+On single node, everything works fine:
 
 ```bash
 uv run train_mnist_torchdata.py  # this works fine
@@ -24,8 +33,10 @@ uv run convert_mnist_to_streaming.py
 uv run train_mnist_streaming.py  # this also works fine
 ```
 
-Then proceed to multi-node training. This repo provides Skypilot files, `sky_torchdata.yaml` and `sky_streaming.yaml` in case you're using Skypilot to provision
-your machines. Otherwise, just copy the run steps from these to files. You will see that the torchdata case trains fine, but the streaming case is stuck.
+## Multinode
+This repo provides Skypilot files, `sky_torchdata.yaml` and `sky_streaming.yaml` in case you're using Skypilot to provision
+your machines. Otherwise, just copy the run steps from these two yaml files. You will see that the torchdata case trains fine, but the streaming case is stuck. The skypilot files
+already set useful environment variables such as `NCCL_DEBUG=INFO`.
 
 
 ```
