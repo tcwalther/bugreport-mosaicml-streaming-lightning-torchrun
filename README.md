@@ -30,6 +30,8 @@ uv run convert_mnist_to_streaming.py
 uv run train_mnist_streaming.py  # this also works fine
 ```
 
+## Multi node
+
 Then proceed to multi-process training. You need a multi-GPU NVidia instance to use NCCL. You will see that the torchdata case trains fine, but the streaming case is stuck. Setting `NCCL_DEBUG=INFO` will show underlying the communication problem.
 
 ```bash
