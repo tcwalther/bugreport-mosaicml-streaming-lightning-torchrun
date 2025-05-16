@@ -10,16 +10,16 @@ vae-bc5a469e-2296-0:10209:10243 [1] NCCL INFO socketPollConnect: connect returne
 
 This doesn't happen with torchdata.
 
-This repo reproduces the bug. It compares a torch.data Dataset and a MosaicML streaming dataset, showing that the former works fine while the latter hangs. To simplify the multinode training code, we
+This repo reproduces the bug. It compares a torch.data Dataset and a MosaicML streaming dataset, showing that the former works fine while the latter hangs. To simplify the multi-GPU training code, we
 use Pytorch Lightning.
 
 ## Setup
 
 Run `uv sync`, or if you don't use `uv`, install `lightning`, `mosaicml-streaming` and `torchvision` (the latter for the MNIST dataset we use as an example).
 
-## Single node
+## Single GPU
 
-On single node, everything works fine:
+On single GPU, everything works fine:
 
 ```bash
 uv run train_mnist_torchdata.py  # this works fine
@@ -30,7 +30,7 @@ uv run convert_mnist_to_streaming.py
 uv run train_mnist_streaming.py  # this also works fine
 ```
 
-## Multi node
+## Multi GPU
 
 Then proceed to multi-process training. You need a multi-GPU NVidia instance to use NCCL. You will see that the torchdata case trains fine, but the streaming case is stuck. Setting `NCCL_DEBUG=INFO` will show underlying the communication problem.
 
