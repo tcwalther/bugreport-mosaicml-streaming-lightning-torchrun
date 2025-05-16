@@ -4,7 +4,6 @@ import torch.nn.functional as F
 import torchvision
 from torch.utils.data import DataLoader
 import lightning as L
-import argparse
 import os
 
 
@@ -41,17 +40,7 @@ class MNISTModel(L.LightningModule):
         return optimizer
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="MNIST Training Script")
-    parser.add_argument(
-        "--num-nodes", type=int, default=1, help="Number of nodes to use"
-    )
-    return parser.parse_args()
-
-
 def main():
-    args = parse_args()
-
     datasets_dir = "./data/torchdata_mnist"
     os.makedirs(datasets_dir, exist_ok=True)
     dataset = torchvision.datasets.MNIST(
@@ -66,7 +55,7 @@ def main():
 
     model = MNISTModel()
 
-    trainer = L.Trainer(max_epochs=1000, num_nodes=args.num_nodes)
+    trainer = L.Trainer(max_epochs=1000)
     trainer.fit(model=model, train_dataloaders=dataloader)
 
 

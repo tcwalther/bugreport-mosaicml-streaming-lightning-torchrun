@@ -1,29 +1,13 @@
 resources:
   accelerators: H100:2
 
-num_nodes: 4
-
 envs:
   NCCL_DEBUG: INFO
-  NCCL_IB_DISABLE: 0
-  NCCL_SOCKET_IFNAME: eth0  # or your network interface
 
 workdir: .
 
 run: |
   uv sync
   uv run python convert_mnist_to_streaming.py
-
-  MASTER_ADDR=$(echo "$SKYPILOT_NODE_IPS" | head -n1)
-  echo "Starting distributed training, head node: $MASTER_ADDR"
-
   uv run python -c 'import streaming; streaming.base.util.clean_stale_shared_memory()'
-
-  uv run torchrun \
-    --nnodes=$SKYPILOT_NUM_NODES \
-    --nproc_per_node=$SKYPILOT_NUM_GPUS_PER_NODE \
-    --rdzv_backend=c10d \
-    --rdzv_endpoint=$MASTER_ADDR:8008 \
-    --rdzv_id $SKYPILOT_TASK_ID \
-    ./train_mnist_streaming.py \
-    --num-nodes $SKYPILOT_NUM_NODES
+  uv run torchrun --nproc_per_node=$SKYPILOT_NUM_GPUS_PER_NODE ./train_mnist_streaming.py

@@ -5,7 +5,6 @@ from torch.utils.data import DataLoader
 import streaming
 import torchvision
 import lightning as L
-import argparse
 
 
 # Simple CNN model for MNIST
@@ -53,17 +52,7 @@ class MNISTDataset(streaming.StreamingDataset):
         return self.transforms(x), y
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="MNIST Training Script")
-    parser.add_argument(
-        "--num-nodes", type=int, default=1, help="Number of nodes to use"
-    )
-    return parser.parse_args()
-
-
 def main():
-    args = parse_args()
-
     batch_size = 1000
     datasets_dir = "./data/streaming_mnist"
     dataset = MNISTDataset(local=datasets_dir, batch_size=batch_size)
@@ -71,7 +60,7 @@ def main():
 
     model = MNISTModel()
 
-    trainer = L.Trainer(max_epochs=1000, num_nodes=args.num_nodes)
+    trainer = L.Trainer(max_epochs=1000)
     trainer.fit(model=model, train_dataloaders=dataloader)
 
 
