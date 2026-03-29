@@ -8,6 +8,15 @@ vae-bc5a469e-2296-0:10209:10243 [1] NCCL INFO socketPollConnect: connect returne
 ...
 ```
 
+## Cause and Solution
+
+**It turns out that it is important to call `dist.init_process_group()` before calling any MDS code!** If you run any MDS code first, MDS
+will call `maybe_init_dist()`, which is a no-op if you already called the function but otherwise calls it for you. This happens for example in `StreamingDataset.__init__()`, but also in MDS' `clean_stale_shared_memory()` function (which is not called in this repo, but I made that mistake in another codebase of mine). When MDS *also* calls `init_process_group()`, you're calling it twice, and the second time hangs.
+
+I haven't dug into how to solve it with PyTorch Lightning - Lightning likely creates the DataModule (and StreamingDataset) before calling init_process_group internally, so the dataset constructor is the trigger there. But at least I now know how to circumvent it.
+
+## Background
+
 This doesn't happen with torchdata.
 
 This repo reproduces the bug. It compares a torch.data Dataset and a MosaicML streaming dataset, showing that the former works fine while the latter hangs. To simplify the multi-GPU training code, we
